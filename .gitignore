@@ -1,3 +1,9 @@
+# Test Results
+*.res
+
+# Compiled Binary
+microshell
+
 # Prerequisites
 *.d
 
