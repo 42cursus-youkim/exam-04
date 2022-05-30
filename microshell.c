@@ -5,12 +5,17 @@
 #endif
 
 #include <signal.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 typedef enum { Ok = 0, Error = -1 } res_t;
+
+bool is_str_equal(char* str1, char* str2) {
+  return strcmp(str1, str2) == 0;
+}
 
 void ft_write(int fd, char* msg, int size);
 
@@ -112,7 +117,7 @@ void exec_pipelines(char** args, char** envp) {
   start = 0;
   prevfd[0] = 0;
   for (int i = 0; args[i]; i++) {
-    if (strcmp(args[i], "|") == 0) {
+    if (is_str_equal(args[i], "|")) {
       ft_pipe(currfd);
       args[i] = 0;
       exec_cmd(args + start, envp, prevfd[0], currfd[1]);
@@ -134,7 +139,7 @@ void exec_pipelines(char** args, char** envp) {
 void exec_cmds(char** args, char** envp) {
   if (*args == 0)
     return;
-  if (strcmp(*args, "cd") == 0)
+  if (is_str_equal(*args, "cd"))
     exec_builtin(args, envp);
   else
     exec_pipelines(args, envp);
@@ -145,7 +150,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
   start = 1;
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], ";") == 0) {
+    if (is_str_equal(argv[i], ";")) {
       argv[i] = 0;
       exec_cmds(argv + start, envp);
       start = i + 1;
