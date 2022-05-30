@@ -6,7 +6,7 @@ test_line () {
 	./microshell $@ >> out.res &
 	sleep .250
 	echo >> out.res
-	leaks microshell > leaks.res 2> /dev/null
+	valgrind microshell > leaks.res 2> /dev/null
 	if grep "ROOT LEAK" < leaks.res > /dev/null 2> /dev/null ; then
 		printf "\e[0;31mLEAKS\n\e[0m"
 	fi
