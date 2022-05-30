@@ -5,6 +5,7 @@ subject.*.txt
 *.res
 
 # Compiled Binary
+microshell-*
 microshell
 
 # Prerequisites

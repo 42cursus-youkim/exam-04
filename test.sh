@@ -4,7 +4,7 @@ test_line () {
 	echo $@
 	echo $@ >> out.res
 	valgrind --trace-children=yes --track-fds=yes --error-exitcode=1 \
-		./microshell 2>> leak.res
+		./microshell $@ 2>> leak.res
 	# (valgrind ./microshell $@ >> out.res 2>> leak.res) &
 	# pid=$!
 	# printf "\e[0;31m"
