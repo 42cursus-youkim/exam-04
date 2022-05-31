@@ -26,7 +26,7 @@ bool is_str_equal(char* str1, char* str2) {
 void ft_write(int fd, char* msg, int size);
 
 void ft_putstr_fd(int fd, char* str) {
-  if (str == NULL)
+  if (str)
     ft_write(fd, str, ft_strlen(str));
   else
     ft_write(2, "(NULL)\n", ft_strlen("(NULL)\n"));
@@ -39,38 +39,13 @@ void ft_perror(char* msg, char* arg) {
   ft_putstr_fd(2, "\n");
 }
 
-void check_sys(res_t ret) {
+int chk(int ret) {
   if (ret == Error) {
     ft_perror("error: fatal", NULL);
     kill(0, SIGINT);
     exit(1);
   }
-}
-
-void ft_write(int fd, char* msg, int size) {
-  check_sys(write(fd, msg, size));
-}
-
-void ft_dup2(int from, int to) {
-  check_sys(dup2(from, to));
-}
-
-void ft_close(int fd) {
-  check_sys(close(fd));
-}
-
-void ft_pipe(int pipefd[2]) {
-  check_sys(pipe(pipefd));
-}
-
-void ft_waitpid(pid_t pid, int* ws, int opt) {
-  check_sys(waitpid(pid, ws, opt));
-}
-
-int ft_fork() {
-  pid_t pid = fork();
-  check_sys(pid);
-  return (pid);
+  return ret;
 }
 
 void copy_pipe(int from[2], int to[2]) {
@@ -86,6 +61,11 @@ void swap_pipe(int left[2], int right[2]) {
   copy_pipe(tmp, right);
 }
 
+// syscall
+void ft_write(int fd, char* msg, int size) {
+  chk(write(fd, msg, size));
+}
+
 // logic
 void exec_builtin(char* args[]) {
   if (!args[1] || args[2])
@@ -97,14 +77,13 @@ void exec_builtin(char* args[]) {
 void exec_cmd(char* args[], char* envp[], int infd, int outfd) {
   if (*args == NULL)
     return;
-
   int ws;
-  pid_t pid = ft_fork();
+  pid_t pid = chk(fork());
   if (pid)
-    ft_waitpid(pid, &ws, 0);
+    chk(waitpid(pid, &ws, 0));
   else {
-    ft_dup2(infd, STDIN_FILENO);
-    ft_dup2(outfd, STDOUT_FILENO);
+    chk(dup2(infd, STDIN_FILENO));
+    chk(dup2(outfd, STDOUT_FILENO));
     if (execve(args[0], args, envp) == Error) {
       ft_perror("error: cannot execute ", args[0]);
       kill(0, SIGINT);
@@ -114,19 +93,19 @@ void exec_cmd(char* args[], char* envp[], int infd, int outfd) {
 }
 
 void exec_pipelines(char* args[], char* envp[]) {
-  int start = 0;
   int prev[2];
   int now[2];
 
+  int start = 0;
   prev[PipeRead] = STDIN_FILENO;
   for (int i = 0; args[i]; i++) {
     if (is_str_equal(args[i], "|")) {
-      ft_pipe(now);
+      chk(pipe(now));
       args[i] = NULL;
       exec_cmd(args + start, envp, prev[PipeRead], now[PipeWrite]);
       if (prev[PipeRead] != STDIN_FILENO)
-        ft_close(prev[PipeRead]);
-      ft_close(now[PipeWrite]);
+        chk(close(prev[PipeRead]));
+      chk(close(now[PipeWrite]));
       swap_pipe(prev, now);
       start = i + 1;
     }
