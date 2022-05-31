@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+// utils
 typedef enum { PipeRead = 0, PipeWrite = 1 } dir_t;
 typedef enum { Ok = 0, Error = -1 } res_t;
 
@@ -72,37 +73,6 @@ int ft_fork() {
   return (pid);
 }
 
-void exec_builtin(char* args[], char* envp[]) {
-  (void)envp;
-  if (!args[1] || args[2]) {
-    ft_perror("error: cd: bad arguments", NULL);
-    return;
-  }
-  if (chdir(args[1]) == Error)
-    ft_perror("error: cd: cannot change directory to ", args[1]);
-}
-
-void exec_cmd(char* args[], char* envp[], int infd, int outfd) {
-  int ws;
-
-  if (*args == NULL)
-    return;
-
-  pid_t pid;
-  pid = ft_fork();
-  if (pid)
-    ft_waitpid(pid, &ws, 0);
-  else {
-    ft_dup2(infd, STDIN_FILENO);
-    ft_dup2(outfd, STDOUT_FILENO);
-    if (execve(args[0], args, envp) == Error) {
-      ft_perror("error: cannot execute ", args[0]);
-      kill(0, SIGINT);
-      exit(1);
-    }
-  }
-}
-
 void copy_pipe(int from[2], int to[2]) {
   to[PipeRead] = from[PipeRead];
   to[PipeWrite] = from[PipeWrite];
@@ -116,12 +86,38 @@ void swap_pipe(int left[2], int right[2]) {
   copy_pipe(tmp, right);
 }
 
+// logic
+void exec_builtin(char* args[]) {
+  if (!args[1] || args[2])
+    return ft_perror("error: cd: bad arguments", NULL);
+  if (chdir(args[1]) == Error)
+    ft_perror("error: cd: cannot change directory to ", args[1]);
+}
+
+void exec_cmd(char* args[], char* envp[], int infd, int outfd) {
+  if (*args == NULL)
+    return;
+
+  int ws;
+  pid_t pid = ft_fork();
+  if (pid)
+    ft_waitpid(pid, &ws, 0);
+  else {
+    ft_dup2(infd, STDIN_FILENO);
+    ft_dup2(outfd, STDOUT_FILENO);
+    if (execve(args[0], args, envp) == Error) {
+      ft_perror("error: cannot execute ", args[0]);
+      kill(0, SIGINT);
+      exit(1);
+    }
+  }
+}
+
 void exec_pipelines(char* args[], char* envp[]) {
-  int start;
+  int start = 0;
   int prev[2];
   int now[2];
 
-  start = 0;
   prev[PipeRead] = STDIN_FILENO;
   for (int i = 0; args[i]; i++) {
     if (is_str_equal(args[i], "|")) {
@@ -143,15 +139,13 @@ void exec_cmds(char* args[], char* envp[]) {
   if (*args == NULL)
     return;
   if (is_str_equal(*args, "cd"))
-    exec_builtin(args, envp);
+    exec_builtin(args);
   else
     exec_pipelines(args, envp);
 }
 
 int main(int argc, char* argv[], char* envp[]) {
-  int start;
-
-  start = 1;
+  int start = 1;
   for (int i = 1; i < argc; i++) {
     if (is_str_equal(argv[i], ";")) {
       argv[i] = NULL;
@@ -161,4 +155,3 @@ int main(int argc, char* argv[], char* envp[]) {
   }
   exec_cmds(argv + start, envp);
 }
-// nubu ";" ";" /bin/echo OK
