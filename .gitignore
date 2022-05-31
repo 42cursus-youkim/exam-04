@@ -1,11 +1,12 @@
 # Not Mine
 subject.*.txt
 
-# Test Results
+# Tests
 *.res
+rem.c
+microshell-*
 
 # Compiled Binary
-microshell-*
 microshell
 
 # Prerequisites

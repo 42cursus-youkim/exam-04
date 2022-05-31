@@ -19,7 +19,7 @@ int ft_strlen(char* str) {
   return i;
 }
 
-bool is_str_equal(char* str1, char* str2) {
+bool str_eq(char* str1, char* str2) {
   return strcmp(str1, str2) == 0;
 }
 
@@ -61,21 +61,20 @@ void swap_pipe(int left[2], int right[2]) {
   copy_pipe(tmp, right);
 }
 
-// syscall
 void ft_write(int fd, char* msg, int size) {
   chk(write(fd, msg, size));
 }
 
 // logic
-void exec_builtin(char* args[]) {
-  if (!args[1] || args[2])
+void run_builtin(char* av[]) {
+  if (!av[1] || av[2])
     return ft_perror("error: cd: bad arguments", NULL);
-  if (chdir(args[1]) == Error)
-    ft_perror("error: cd: cannot change directory to ", args[1]);
+  if (chdir(av[1]) == Error)
+    ft_perror("error: cd: cannot change directory to ", av[1]);
 }
 
-void exec_cmd(char* args[], char* envp[], int infd, int outfd) {
-  if (*args == NULL)
+void exec_cmd(char* av[], char* ev[], int infd, int outfd) {
+  if (*av == NULL)
     return;
   int ws;
   pid_t pid = chk(fork());
@@ -84,25 +83,25 @@ void exec_cmd(char* args[], char* envp[], int infd, int outfd) {
   else {
     chk(dup2(infd, STDIN_FILENO));
     chk(dup2(outfd, STDOUT_FILENO));
-    if (execve(args[0], args, envp) == Error) {
-      ft_perror("error: cannot execute ", args[0]);
+    if (execve(av[0], av, ev) == Error) {
+      ft_perror("error: cannot execute ", av[0]);
       kill(0, SIGINT);
       exit(1);
     }
   }
 }
 
-void exec_pipelines(char* args[], char* envp[]) {
+void run_pipe(char* av[], char* ev[]) {
   int prev[2];
   int now[2];
 
   int start = 0;
   prev[PipeRead] = STDIN_FILENO;
-  for (int i = 0; args[i]; i++) {
-    if (is_str_equal(args[i], "|")) {
+  for (int i = 0; av[i]; i++) {
+    if (str_eq(av[i], "|")) {
       chk(pipe(now));
-      args[i] = NULL;
-      exec_cmd(args + start, envp, prev[PipeRead], now[PipeWrite]);
+      av[i] = NULL;
+      exec_cmd(av + start, ev, prev[PipeRead], now[PipeWrite]);
       if (prev[PipeRead] != STDIN_FILENO)
         chk(close(prev[PipeRead]));
       chk(close(now[PipeWrite]));
@@ -111,26 +110,26 @@ void exec_pipelines(char* args[], char* envp[]) {
     }
   }
   now[PipeWrite] = STDOUT_FILENO;
-  exec_cmd(args + start, envp, prev[PipeRead], now[PipeWrite]);
+  exec_cmd(av + start, ev, prev[PipeRead], now[PipeWrite]);
 }
 
-void exec_cmds(char* args[], char* envp[]) {
-  if (*args == NULL)
+void run_cmds(char* av[], char* ev[]) {
+  if (*av == NULL)
     return;
-  if (is_str_equal(*args, "cd"))
-    exec_builtin(args);
+  if (str_eq(*av, "cd"))
+    run_builtin(av);
   else
-    exec_pipelines(args, envp);
+    run_pipe(av, ev);
 }
 
-int main(int argc, char* argv[], char* envp[]) {
+int main(int ac, char* av[], char* ev[]) {
   int start = 1;
-  for (int i = 1; i < argc; i++) {
-    if (is_str_equal(argv[i], ";")) {
-      argv[i] = NULL;
-      exec_cmds(argv + start, envp);
+  for (int i = 1; i < ac; i++) {
+    if (str_eq(av[i], ";")) {
+      av[i] = NULL;
+      run_cmds(av + start, ev);
       start = i + 1;
     }
   }
-  exec_cmds(argv + start, envp);
+  run_cmds(av + start, ev);
 }
