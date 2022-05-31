@@ -7,38 +7,18 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+// clang-format off
 // utils
 typedef enum { In = 0, Out = 1 } dir_t;
 typedef enum { Ok = 0, Error = -1 } res_t;
 
-int ft_strlen(char* str) {
-  int i = 0;
-  while (str[i])
-    i++;
-  return i;
-}
+void copy_pipe(int from[2], int to[2]) { to[In] = from[In]; to[Out] = from[Out]; }
+void swap_pipe(int a[2], int b[2]) { int tmp_a[2]; copy_pipe(a, tmp_a); copy_pipe(b, a); copy_pipe(tmp_a, b); }
+bool str_eq(char *a, char *b) { return strcmp(a, b) == 0; }
 
-bool str_eq(char* str1, char* str2) {
-  return strcmp(str1, str2) == 0;
-}
-
-void ft_write(int fd, char* msg, int size);
-
-void ft_putstr_fd(int fd, char* str) {
-  if (str)
-    ft_write(fd, str, ft_strlen(str));
-  else
-    ft_write(2, "(NULL)\n", ft_strlen("(NULL)\n"));
-}
-
-void ft_perror(char* msg, char* arg) {
-  ft_putstr_fd(2, msg);
-  if (arg)
-    ft_putstr_fd(2, arg);
-  ft_putstr_fd(2, "\n");
-}
-
+int str_len(char *s) { int i = 0; while(s[i]) i++; return i; }
+int ft_write(int fd, char *s) { if (s) write(fd, s, str_len(s)); else write(fd, "(NULL)\n", str_len("(NULL)\n")); }
+void ft_perror(char *s, char *a) { ft_write(2, s); if (a) ft_write(2, a); ft_write(2, "\n"); }
 int chk(int ret) {
   if (ret == Error) {
     ft_perror("error: fatal", NULL);
@@ -48,23 +28,7 @@ int chk(int ret) {
   return ret;
 }
 
-void copy_pipe(int from[2], int to[2]) {
-  to[In] = from[In];
-  to[Out] = from[Out];
-}
-
-void swap_pipe(int left[2], int right[2]) {
-  int tmp[2];
-
-  copy_pipe(left, tmp);
-  copy_pipe(right, left);
-  copy_pipe(tmp, right);
-}
-
-void ft_write(int fd, char* msg, int size) {
-  chk(write(fd, msg, size));
-}
-
+// clang-format on
 // logic
 void run_builtin(char* av[]) {
   if (!av[1] || av[2])
@@ -74,7 +38,7 @@ void run_builtin(char* av[]) {
 }
 
 void run_cmd(char* av[], char* ev[], int in, int out) {
-  if (*av == NULL)
+  if (!av[0])
     return;
   int ws;
   pid_t pid = chk(fork());
@@ -112,9 +76,9 @@ void run_pipe(char* av[], char* ev[]) {
 }
 
 void run_cmds(char* av[], char* ev[]) {
-  if (*av == NULL)
+  if (!av[0])
     return;
-  if (str_eq(*av, "cd"))
+  if (str_eq(av[0], "cd"))
     run_builtin(av);
   else
     run_pipe(av, ev);
@@ -130,4 +94,5 @@ int main(int ac, char* av[], char* ev[]) {
     }
   }
   run_cmds(av + start, ev);
+  return 0;
 }
