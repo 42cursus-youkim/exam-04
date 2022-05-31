@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 // utils
-typedef enum { PipeRead = 0, PipeWrite = 1 } dir_t;
+typedef enum { In = 0, Out = 1 } dir_t;
 typedef enum { Ok = 0, Error = -1 } res_t;
 
 int ft_strlen(char* str) {
@@ -49,8 +49,8 @@ int chk(int ret) {
 }
 
 void copy_pipe(int from[2], int to[2]) {
-  to[PipeRead] = from[PipeRead];
-  to[PipeWrite] = from[PipeWrite];
+  to[In] = from[In];
+  to[Out] = from[Out];
 }
 
 void swap_pipe(int left[2], int right[2]) {
@@ -73,7 +73,7 @@ void run_builtin(char* av[]) {
     ft_perror("error: cd: cannot change directory to ", av[1]);
 }
 
-void exec_cmd(char* av[], char* ev[], int infd, int outfd) {
+void run_cmd(char* av[], char* ev[], int in, int out) {
   if (*av == NULL)
     return;
   int ws;
@@ -81,8 +81,8 @@ void exec_cmd(char* av[], char* ev[], int infd, int outfd) {
   if (pid)
     chk(waitpid(pid, &ws, 0));
   else {
-    chk(dup2(infd, STDIN_FILENO));
-    chk(dup2(outfd, STDOUT_FILENO));
+    chk(dup2(in, STDIN_FILENO));
+    chk(dup2(out, STDOUT_FILENO));
     if (execve(av[0], av, ev) == Error) {
       ft_perror("error: cannot execute ", av[0]);
       kill(0, SIGINT);
@@ -92,25 +92,23 @@ void exec_cmd(char* av[], char* ev[], int infd, int outfd) {
 }
 
 void run_pipe(char* av[], char* ev[]) {
-  int prev[2];
-  int now[2];
-
+  int in[2], out[2];
   int start = 0;
-  prev[PipeRead] = STDIN_FILENO;
+  in[In] = STDIN_FILENO;
   for (int i = 0; av[i]; i++) {
     if (str_eq(av[i], "|")) {
-      chk(pipe(now));
+      chk(pipe(out));
       av[i] = NULL;
-      exec_cmd(av + start, ev, prev[PipeRead], now[PipeWrite]);
-      if (prev[PipeRead] != STDIN_FILENO)
-        chk(close(prev[PipeRead]));
-      chk(close(now[PipeWrite]));
-      swap_pipe(prev, now);
+      run_cmd(av + start, ev, in[In], out[Out]);
+      if (in[In] != STDIN_FILENO)
+        chk(close(in[In]));
+      chk(close(out[Out]));
+      swap_pipe(in, out);
       start = i + 1;
     }
   }
-  now[PipeWrite] = STDOUT_FILENO;
-  exec_cmd(av + start, ev, prev[PipeRead], now[PipeWrite]);
+  out[Out] = STDOUT_FILENO;
+  run_cmd(av + start, ev, in[In], out[Out]);
 }
 
 void run_cmds(char* av[], char* ev[]) {
