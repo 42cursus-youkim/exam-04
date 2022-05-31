@@ -17,7 +17,7 @@ void swap_pipe(int a[2], int b[2]) { int tmp_a[2]; copy_pipe(a, tmp_a); copy_pip
 bool str_eq(char *a, char *b) { return strcmp(a, b) == 0; }
 
 int str_len(char *s) { int i = 0; while(s[i]) i++; return i; }
-int ft_write(int fd, char *s) { if (s) write(fd, s, str_len(s)); else write(fd, "(NULL)\n", str_len("(NULL)\n")); }
+int ft_write(int fd, char *s) { return write(fd, s, str_len(s)); }
 void ft_perror(char *s, char *a) { ft_write(2, s); if (a) ft_write(2, a); ft_write(2, "\n"); }
 int chk(int ret) {
   if (ret == Error) {
@@ -33,7 +33,7 @@ int chk(int ret) {
 void run_builtin(char* av[]) {
   if (!av[1] || av[2])
     return ft_perror("error: cd: bad arguments", NULL);
-  if (chdir(av[1]) == Error)
+  else if (chdir(av[1]) == Error)
     ft_perror("error: cd: cannot change directory to ", av[1]);
 }
 
